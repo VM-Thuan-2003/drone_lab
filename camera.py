@@ -151,3 +151,5 @@ if __name__ == "__main__":
     # Clean up and close all OpenCV windows
     camera.release()
     cv2.destroyAllWindows()
+
+    print("Camera released and OpenCV windows closed.")
