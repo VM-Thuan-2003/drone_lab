@@ -25,11 +25,6 @@ class ObjectAndQrDetector:
         self.net.setInputMean((127.5, 127.5, 127.5))
         self.net.setInputSwapRB(True)
 
-        # Initialize Picamera2
-        # self.picam2 = Picamera2()
-        # self.picam2.configure(self.picam2.create_preview_configuration(main={"size": (640, 480)}))
-        # self.picam2.start()
-
         # Start with object detection mode
         self.mode = 'object'
 

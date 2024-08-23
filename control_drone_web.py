@@ -15,6 +15,7 @@ import time
 
 from flyUnit import FlyUnit
 from camera import Camera
+from camera_usb import CameraUsb
 from control import *
 from socket_io import *
 from stream import RTSPStreamer
@@ -33,31 +34,29 @@ time_prev_action = 0
 
 time_curr = 0
 
-
 """
 Class Drone to handle event of drone to project
 """
 
 class Drone:
     #1270, 720 - 1538, 864
-    def __init__(self, video_filename="output_15_8_2024_2.mp4", server_url = 'http://103.167.198.50:5000', key_stream="albert1", size_frame=(1270, 720), codec='libx264', bitrate='1M', preset='ultrafast'):
+    def __init__(self, video_filename="output_15_8_2024_2.mp4", server_url = 'http://103.167.198.50:5000', key_stream="albert3", size_frame=(1270, 720), codec='libx264', bitrate='1M', preset='ultrafast'):
         
         self.copter = FlyUnit()
 
         self.servo = Servo()
         
-        self.buttonCoffee = ButtonReader(pin=22)
+        self.buttonCoffee = ButtonReader(pin=27)
         
         self.sensorPerson1 = LD2410B(pin=5)
         self.sensorPerson2 = LD2410B(pin=6)
-        self.sensorPerson3 = LD2410B(pin=13)
         
         self.ob_qr = ObjectAndQrDetector()
         self.data_qr = None
 
         self.running = True
-        self.picam = Camera(resolution=size_frame,  video_filename=video_filename)
-        self.picam.set_continuous_autofocus()
+        self.picam = CameraUsb(resolution=size_frame,  video_filename=video_filename)
+        # self.picam.set_continuous_autofocus()
         self.frame = None
 
         self.streamer = RTSPStreamer(
@@ -88,6 +87,7 @@ class Drone:
         self.isRunWp = None
         self.isPerson = True
 
+        
         self.time_send_socket_prev = 0
         self.DELAY_SEND_SOCKET = 1
 
@@ -270,7 +270,7 @@ class Drone:
         self.buttonCoffee.cleanup()
         self.sensorPerson1.cleanup()
         self.sensorPerson2.cleanup()
-        self.sensorPerson3.cleanup()
+#        self.sensorPerson3.cleanup()
 
 def main():
 
@@ -283,7 +283,9 @@ def main():
         while drone_instance.copter.isConnect:
             # Main thread can handle other tasks here
             time_curr = time.time()
-
+            
+            # print(f"{time_curr - time_prev_send_info} - {time_curr - time_prev_action}")
+            
             if time_curr - time_prev_send_info > DELAY_SEND_INFO:
                 time_prev_send_info = time_curr
 
@@ -298,6 +300,8 @@ def main():
 
             if time_curr - time_prev_action > DELAY_ACTION:
                 time_prev_action = time_curr
+
+                drone_instance.isPerson = drone_instance.sensorPerson1.read_LD2410B() or drone_instance.sensorPerson2.read_LD2410B()
 
                 if drone_instance.isRunWp is not None and drone_instance.waypoints is not None:
                     if str(drone_instance.droneVehicle.mode.name) == "GUIDED" and drone_instance.isRunWp == True:
@@ -315,9 +319,10 @@ def main():
                                         drone_instance.flag_change_dis = True
                                         print("Waypoint reached!")
                                         drone_instance.waypoint_index = drone_instance.waypoint_index + 1
-
-                    if drone_instance.current_waypoint == len(drone_instance.waypoints) - 1:
+                    print(f"  cc:   {drone_instance.waypoint_index} - {len(drone_instance.waypoints)}")
+                    if drone_instance.waypoint_index == len(drone_instance.waypoints):
                         drone_instance.isFinshedWp = True
+                        
 
                 if drone_instance.isFinshedWp:
                     if drone_instance.isFinshedCoffee is False:
@@ -327,23 +332,25 @@ def main():
                         if drone_instance.data_qr is not None and drone_instance.data_qr == "2" :
                             drone_instance.positionCoffee = True
                             
-                        if drone_instance.positionCoffee:
+                        if drone_instance.positionCoffee or 1:
                             """
                                 QR detected -> open servo -> landing -> disarm
                             """
                             drone_instance.servo.open_handle()
 
+
                             drone_instance.droneVehicle.mode = VehicleMode("LAND")
                             
                             while drone_instance.droneVehicle.armed:
-                                print("Waiting for disarming...")
-                                # drone_instance.socket_client.send_message("controlMsg", "web", "droneStatus","Waiting for disarming...")
-                                time.sleep(1)
+                                 # print("Waiting for disarming...")
+                                 # drone_instance.socket_client.send_message("controlMsg", "web", "droneStatus","Waiting for disarming...")
+                                 time.sleep(1)
                             
-                            drone_instance.droneVehicle.mode = VehicleMode("GUIDED")
+                            if not drone_instance.droneVehicle.armed:
+                                drone_instance.droneVehicle.mode = VehicleMode("GUIDED")
 
-                            # print("Landed and disarmed")
-                            # drone_instance.socket_client.send_message("controlMsg", "web", "droneStatus","Landed and disarmed")
+                            print("Landed and disarmed")
+                            drone_instance.socket_client.send_message("controlMsg", "web", "droneStatus","Landed and disarmed")
                             
                             """
                                 waiting to person give coffee cup
@@ -356,8 +363,6 @@ def main():
                                 drone_instance.servo.close_handle()
                                 drone_instance.isFinshedCoffee = True
                     else:
-                        drone_instance.isPerson = drone_instance.sensorPerson1.read_LD2410B() or drone_instance.sensorPerson2.read_LD2410B() or drone_instance.sensorPerson3.read_LD2410B()
-                        
                         if not drone_instance.isPerson:
                             """
                                 when no person -> arm -> takeoff -> return to home
@@ -369,8 +374,11 @@ def main():
                             
                             drone_instance.droneVehicle.simple_takeoff(30)
                             
-                            drone_instance.droneVehicle.mode = VehicleMode("RTL")
-                            
+
+                           # drone_instance.droneVehicle.mode = VehicleMode("RTL")
+
+                        
+#                print(f"         {drone_instance.sensorPerson1.read_LD2410B()} - {drone_instance.sensorPerson2.read_LD2410B()} - {drone_instance.sensorPerson3.read_LD2410B()}")
                 print(f"                                    data QR: {drone_instance.data_qr} - btn: {drone_instance.buttonCoffee.read_button()} - person: {drone_instance.isPerson}")
 
     except KeyboardInterrupt:
