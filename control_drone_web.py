@@ -9,8 +9,6 @@ Import library for project
 from __future__ import print_function
 from dronekit import VehicleMode, LocationGlobalRelative
 
-import subprocess
-
 import time
 
 from flyUnit import FlyUnit
@@ -26,6 +24,7 @@ import threading
 """
 Defined variable for project
 """
+
 DELAY_SEND_INFO = .6
 DELAY_ACTION = .8
 
@@ -53,7 +52,9 @@ class Drone:
         
         self.ob_qr = ObjectAndQrDetector()
         self.data_qr = None
-
+        self.data_objectPerson = 0
+        
+        
         self.running = True
         self.picam = CameraUsb(resolution=size_frame,  video_filename=video_filename)
         # self.picam.set_continuous_autofocus()
@@ -86,7 +87,6 @@ class Drone:
         self.isRunCoffee = False
         self.isRunWp = None
         self.isPerson = True
-
         
         self.time_send_socket_prev = 0
         self.DELAY_SEND_SOCKET = 1
@@ -241,17 +241,18 @@ class Drone:
         while self.running:
             if self.frame is not None:
                 # Process frame if necessary
-                data = self.ob_qr.qr_detect(self.frame)
-                print(data)
+                self.frame, data_qr = self.ob_qr.qr_detect(self.frame)
+                self.frame, self.data_person = self.ob_qr.object_detect(self.frame)
+                
+                print(f"  data_qr: {data_qr}    -    data_person: {self.data_person}")
                 if time.time() - self.time_send_socket_prev > self.DELAY_SEND_SOCKET:
                     self.time_send_socket_prev = time.time()
-                    if len(data) != 0:
-                        self.data_qr = data[0]
-                        self.socket_client.send_message("controlMsg", "web", "droneFlyStatus", f"QR Detected: {data[0]}")
+                    if len(data_qr) != 0:
+                        self.data_qr = data_qr[0]
+                        self.socket_client.send_message("controlMsg", "web", "droneFlyStatus", f"QR Detected: {data_qr[0]}")
                     else:
                         self.data_qr = None
                         self.socket_client.send_message("controlMsg", "web", "droneFlyStatus", f"QR none Detected")
-
 
     def start(self):
         self.thread_1 = threading.Thread(target=self.processing_1, daemon=True)
@@ -270,7 +271,6 @@ class Drone:
         self.buttonCoffee.cleanup()
         self.sensorPerson1.cleanup()
         self.sensorPerson2.cleanup()
-#        self.sensorPerson3.cleanup()
 
 def main():
 
@@ -379,7 +379,7 @@ def main():
 
                         
 #                print(f"         {drone_instance.sensorPerson1.read_LD2410B()} - {drone_instance.sensorPerson2.read_LD2410B()} - {drone_instance.sensorPerson3.read_LD2410B()}")
-                print(f"                                    data QR: {drone_instance.data_qr} - btn: {drone_instance.buttonCoffee.read_button()} - person: {drone_instance.isPerson}")
+                # print(f"                                    data QR: {drone_instance.data_qr} - btn: {drone_instance.buttonCoffee.read_button()} - person: {drone_instance.isPerson}")
 
     except KeyboardInterrupt:
         drone_instance.stop()

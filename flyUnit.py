@@ -54,7 +54,7 @@ class FlyUnit:
             "Groundspeed": self.vehicle.groundspeed,
             "lat": self.vehicle.location.global_frame.lat,
             "lon": self.vehicle.location.global_frame.lon,
-            "alt": self.vehicle.location.global_frame.alt,
+            "alt": self.vehicle.location.global_relative_frame.alt,
             "homeLocation": {
                 "lat": self.vehicle.home_location.lat if self.vehicle.home_location is not None else 0,
                 "lon": self.vehicle.home_location.lon if self.vehicle.home_location is not None else 0,

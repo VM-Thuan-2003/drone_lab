@@ -34,18 +34,74 @@ class ObjectAndQrDetector:
 
         if len(classIds) != 0:
             for classId, conf, box in zip(classIds.flatten(), confs.flatten(), bbox):
-                if self.classNames[classId - 1].lower() == 'cup':
+                if self.classNames[classId - 1].lower() == 'person':
                     object_count += 1
+                    cvzone.cornerRect(
+                        img, box,
+                        l=20, t=3, rt=1,
+                        colorR=(208, 224, 64),
+                        colorC=(255, 0, 0)
+                    )
+                    cv2.putText(img, f'{self.classNames[classId - 1].upper()}',
+                                (box[0] + 10, box[1] + 30), cv2.FONT_HERSHEY_SIMPLEX,
+                                0.5, (0, 255, 0), 2)
 
-        return object_count
+        return img, object_count
+
+    # def object_detect(self, img):
+    #     # Perform object detection
+    #     classIds, confs, bbox = self.net.detect(img, confThreshold=self.thres, nmsThreshold=self.nmsThres)
+    #     object_count = 0
+
+    #     # If any objects are detected
+    #     if len(classIds) != 0:
+    #         # Iterate over the detected objects
+    #         for classId, conf, box in zip(classIds.flatten(), confs.flatten(), bbox):
+    #             # Check if the detected object is a person
+    #             if self.classNames[classId - 1].lower() == 'person':
+    #                 object_count += 1
+    #                 # Draw a rectangle around the detected person
+    #                 x, y, w, h = box
+    #                 cv2.rectangle(img, (x, y), (x + w, y + h), color=(0, 255, 0), thickness=2)
+    #                 # Optionally, add the confidence level
+    #                 cv2.putText(img, f'Person: {conf:.2f}', (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+    #     # Return the modified frame and the count of detected persons
+    #     return img, object_count
+
+    
+    # def qr_detect(self, img):
+    #     qr_codes = []
+    #     for barcode in decode(img):
+    #         myData = barcode.data.decode('utf-8')
+    #         qr_codes.append(myData)
+    #     return img, qr_codes
 
     def qr_detect(self, img):
+        # List to store the decoded QR code data
         qr_codes = []
+
+        # Decode the QR codes in the image
         for barcode in decode(img):
+            # Decode the QR code data
             myData = barcode.data.decode('utf-8')
             qr_codes.append(myData)
-        return qr_codes
 
+            # Get the coordinates of the bounding box
+            pts = barcode.polygon
+            if len(pts) == 4:
+                # Draw a rectangle around the QR code
+                pts = [(pt.x, pt.y) for pt in pts]
+                npts = cv2.convexHull(np.array(pts, dtype=np.float32))
+                cv2.polylines(img, [np.int32(npts)], isClosed=True, color=(0, 255, 0), thickness=2)
+
+            # Get the bounding box for putting the text
+            rect = barcode.rect
+            cv2.putText(img, myData, (rect.left, rect.top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+        # Return the modified frame and the list of QR code data
+        return img, qr_codes
+    
     def run(self):
         while True:
             img = self.picam2.capture_array()

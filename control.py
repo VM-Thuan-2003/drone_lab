@@ -77,23 +77,49 @@ class Servo:
     def servo_clean(self):
         GPIO.cleanup()
     
-if __name__ == "__main__":
-    # Argument parser for command-line arguments
-    parser = argparse.ArgumentParser(description="Control stepper motor with distance and direction input.")
-    parser.add_argument("direction", type=str, choices=["open", "close"], help="Direction to move the servo motor (open or close).")
+class Buzzer:
+    def __init__(self, buzzer_pin=18):
+        GPIO.setwarnings(False)
+        GPIO.setmode(GPIO.BCM)
+        self.buzzer_pin = buzzer_pin
+        GPIO.setup(self.buzzer_pin, GPIO.OUT)
     
-    # Parse the command-line arguments
-    args = parser.parse_args()
+    def buzz(self, duration=1):
+        """Activates the buzzer for the specified duration."""
+        GPIO.output(self.buzzer_pin, GPIO.HIGH)
+        time.sleep(duration)
+        GPIO.output(self.buzzer_pin, GPIO.LOW)
     
-    servo = Servo()
+    def buzz_pattern(self, pattern):
+        """
+        Activates the buzzer based on a pattern.
+        :param pattern: List of tuples with (duration, pause) for buzzing and silence.
+        """
+        for duration, pause in pattern:
+            self.buzz(duration)
+            time.sleep(pause)
+    
+    def buzzer_clean(self):
+        """Cleans up the GPIO settings."""
+        GPIO.cleanup()
 
-    # try:
-    print(f"{args}")
-    servo.run_servo(direction = args.direction)
-    # except:
-    #     servo.servo_clean()
-    # finally:
-    #     servo.servo_clean()
+# if __name__ == "__main__":
+#     # Argument parser for command-line arguments
+#     parser = argparse.ArgumentParser(description="Control stepper motor with distance and direction input.")
+#     parser.add_argument("direction", type=str, choices=["open", "close"], help="Direction to move the servo motor (open or close).")
+    
+#     # Parse the command-line arguments
+#     args = parser.parse_args()
+    
+#     servo = Servo()
+
+#     # try:
+#     print(f"{args}")
+#     servo.run_servo(direction = args.direction)
+#     # except:
+#     #     servo.servo_clean()
+#     # finally:
+#     #     servo.servo_clean()
 
 # if __name__ == "__main__":
 #     servo = Servo()
@@ -107,3 +133,17 @@ if __name__ == "__main__":
 #     except:
 #         pass
 #     GPIO.cleanup()
+
+# if __name__ == "__main__":
+#     buzzer = Buzzer(buzzer_pin=21)
+    
+#     try:
+#         buzzer.buzz(2)  # Buzz for 2 seconds
+#         while 1:
+#             buzzer.buzz_pattern([(0.1, 0.1),(0.1, 0.2),(0.1, 0.3),(0.1, 0.4),(0.1, 0.5),(0.1, 0.6)])  # Buzz pattern
+        
+#     except KeyboardInterrupt:
+#         print("Program interrupted")
+    
+#     finally:
+#         buzzer.buzzer_clean()

@@ -1,10 +1,19 @@
 import cv2
 import time
+import os
 
 class CameraUsb:
     def __init__(self, resolution=(640, 480), video_filename="output.mp4"):
         # Initialize the video capture object with a USB camera (usually at index 0)
-        self.cap = cv2.VideoCapture(0)
+        
+        # self.port = self.get_minimal_video_port()
+        
+        self.port = "/dev/video0"
+        
+        if self.port is not None:
+            self.cap = cv2.VideoCapture(self.port)
+        else:
+            self.cap = cv2.VideoCapture(0)
 
         # Set the resolution
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
@@ -31,6 +40,42 @@ class CameraUsb:
             (self.frame_width, self.frame_height)
         )
 
+    def get_minimal_video_port(self):
+        # List all video devices in the /dev directory
+        dev_files = os.listdir('/dev')
+        
+        # Extract and sort video devices by their numeric part
+        video_devices = sorted(
+            [f"/dev/{file}" for file in dev_files if file.startswith('video') and file[5:].isdigit()],
+            key=lambda x: int(x[10:])  # Extract the numeric part and sort by it
+        )
+        
+        if not video_devices:
+            print("No video devices found.")
+            return None
+
+        minimal_device = None
+        
+        print("Checking connected video devices:")
+        for device in video_devices:
+            # Try to open the video device with OpenCV
+            cap = cv2.VideoCapture(device)
+            if cap.isOpened():
+                # print(f"Camera connected and accessible at {device}")
+                cap.release()  # Release the camera after checking
+                if minimal_device is None:
+                    minimal_device = device  # Set the first accessible device as minimal
+            else:
+                # print(f"Failed to access camera at {device}")
+                if minimal_device is None:
+                    minimal_device = device  # Still set this as the minimal device if nothing else is accessible
+        
+        if minimal_device:
+            return minimal_device
+        else:
+            print("No accessible video devices found.")
+            return None
+    
     def read_camera(self):
         # Capture an image from the camera
         ret, frame = self.cap.read()
@@ -74,7 +119,7 @@ class CameraUsb:
         self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 0)  # Disable autofocus
         self.cap.set(cv2.CAP_PROP_FOCUS, focus_value)  # Set manual focus
 
-    def set_autofocus(self):
+    def set_continuous_autofocus(self):
         """Enable autofocus mode."""
         self.cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)  # Enable autofocus
 
@@ -85,10 +130,10 @@ class CameraUsb:
 
 if __name__ == "__main__":
     # Create an instance of the Camera class
-    camera = Camera(resolution=(1280, 720), video_filename="output_usb_camera.mp4")
+    camera = CameraUsb(resolution=(1280, 720), video_filename="output_usb_camera.mp4")
 
     # Example focus control
-    camera.set_autofocus()  # Enable autofocus
+    camera.set_continuous_autofocus()  # Enable autofocus
     time.sleep(2)  # Allow time for autofocus to adjust
     # camera.set_manual_focus(100)  # Set manual focus to a specific value
 
